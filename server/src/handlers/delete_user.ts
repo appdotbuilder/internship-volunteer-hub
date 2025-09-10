@@ -1,7 +1,18 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
 export async function deleteUser(id: number): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is deleting a user and all their associated data
-    // from the database. This is an admin-only function.
-    // Should handle cascade deletion of profiles and related data.
-    return Promise.resolve(true);
+  try {
+    // Delete the user by ID - cascade deletion will handle associated data
+    const result = await db.delete(usersTable)
+      .where(eq(usersTable.id, id))
+      .execute();
+
+    // Return true if a user was actually deleted, false if user didn't exist
+    return (result.rowCount || 0) > 0;
+  } catch (error) {
+    console.error('User deletion failed:', error);
+    throw error;
+  }
 }

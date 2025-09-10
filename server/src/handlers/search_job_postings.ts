@@ -1,40 +1,55 @@
+import { db } from '../db';
+import { jobPostingsTable } from '../db/schema';
 import { type SearchJobsInput, type JobPosting } from '../schema';
+import { eq, and, or, ilike, desc, SQL } from 'drizzle-orm';
 
-export async function searchJobPostings(input: SearchJobsInput): Promise<JobPosting[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is searching and filtering job postings based on
-    // the provided criteria (query, type, location, company) with pagination support.
-    // Should return active job postings that match the search criteria.
-    return Promise.resolve([
-        {
-            id: 1,
-            company_id: 1,
-            title: 'Frontend Developer Intern',
-            description: 'Join our team as a frontend developer intern',
-            type: 'internship',
-            location: 'Remote',
-            requirements: 'JavaScript, React',
-            duration: '3 months',
-            compensation: 'Stipend: $2000/month',
-            application_deadline: new Date('2024-12-31'),
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date()
-        },
-        {
-            id: 2,
-            company_id: 2,
-            title: 'Community Outreach Volunteer',
-            description: 'Help us make a difference in the community',
-            type: 'volunteer',
-            location: 'San Francisco, CA',
-            requirements: 'Good communication skills',
-            duration: 'Flexible',
-            compensation: 'Unpaid',
-            application_deadline: null,
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date()
-        }
-    ] as JobPosting[]);
-}
+export const searchJobPostings = async (input: SearchJobsInput): Promise<JobPosting[]> => {
+  try {
+    // Build conditions array for filtering
+    const conditions: SQL<unknown>[] = [];
+    
+    // Always filter for active job postings
+    conditions.push(eq(jobPostingsTable.is_active, true));
+
+    // Add search query filter (searches title and description)
+    if (input.query) {
+      const searchQuery = `%${input.query}%`;
+      conditions.push(
+        or(
+          ilike(jobPostingsTable.title, searchQuery),
+          ilike(jobPostingsTable.description, searchQuery)
+        )!
+      );
+    }
+
+    // Add job type filter
+    if (input.type) {
+      conditions.push(eq(jobPostingsTable.type, input.type));
+    }
+
+    // Add location filter (case-insensitive partial match)
+    if (input.location) {
+      const locationQuery = `%${input.location}%`;
+      conditions.push(ilike(jobPostingsTable.location, locationQuery));
+    }
+
+    // Add company filter
+    if (input.company_id) {
+      conditions.push(eq(jobPostingsTable.company_id, input.company_id));
+    }
+
+    // Build the complete query
+    const results = await db.select()
+      .from(jobPostingsTable)
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .orderBy(desc(jobPostingsTable.created_at))
+      .limit(input.limit)
+      .offset(input.offset)
+      .execute();
+    
+    return results;
+  } catch (error) {
+    console.error('Job search failed:', error);
+    throw error;
+  }
+};

@@ -1,6 +1,18 @@
+import { db } from '../db';
+import { jobPostingsTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
 export async function deleteJobPosting(id: number): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is deleting a job posting from the database
-    // and returning true if successful, false otherwise.
-    return Promise.resolve(true);
+  try {
+    // Delete the job posting by ID
+    const result = await db.delete(jobPostingsTable)
+      .where(eq(jobPostingsTable.id, id))
+      .execute();
+
+    // Check if any rows were affected (deleted)
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    console.error('Job posting deletion failed:', error);
+    throw error;
+  }
 }

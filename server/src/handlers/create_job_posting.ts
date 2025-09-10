@@ -1,22 +1,40 @@
+import { db } from '../db';
+import { jobPostingsTable, companyProfilesTable } from '../db/schema';
 import { type CreateJobPostingInput, type JobPosting } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function createJobPosting(input: CreateJobPostingInput): Promise<JobPosting> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a new job posting for a company
-    // and storing it in the database.
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+  try {
+    // Verify the company exists before creating the job posting
+    const company = await db.select()
+      .from(companyProfilesTable)
+      .where(eq(companyProfilesTable.id, input.company_id))
+      .execute();
+
+    if (company.length === 0) {
+      throw new Error(`Company with id ${input.company_id} not found`);
+    }
+
+    // Insert job posting record
+    const result = await db.insert(jobPostingsTable)
+      .values({
         company_id: input.company_id,
         title: input.title,
         description: input.description,
         type: input.type,
-        location: input.location || null,
-        requirements: input.requirements || null,
-        duration: input.duration || null,
-        compensation: input.compensation || null,
-        application_deadline: input.application_deadline || null,
-        is_active: true,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as JobPosting);
+        location: input.location ?? null,
+        requirements: input.requirements ?? null,
+        duration: input.duration ?? null,
+        compensation: input.compensation ?? null,
+        application_deadline: input.application_deadline ?? null,
+        is_active: true // Always set to true for new postings
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Job posting creation failed:', error);
+    throw error;
+  }
 }

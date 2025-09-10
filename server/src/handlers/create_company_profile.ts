@@ -1,18 +1,25 @@
+import { db } from '../db';
+import { companyProfilesTable } from '../db/schema';
 import { type CreateCompanyProfileInput, type CompanyProfile } from '../schema';
 
-export async function createCompanyProfile(input: CreateCompanyProfileInput): Promise<CompanyProfile> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a company profile for a user
-    // and storing it in the database.
-    return Promise.resolve({
-        id: 0, // Placeholder ID
+export const createCompanyProfile = async (input: CreateCompanyProfileInput): Promise<CompanyProfile> => {
+  try {
+    // Insert company profile record
+    const result = await db.insert(companyProfilesTable)
+      .values({
         user_id: input.user_id,
         company_name: input.company_name,
-        description: input.description || null,
-        website: input.website || null,
-        location: input.location || null,
-        industry: input.industry || null,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as CompanyProfile);
-}
+        description: input.description ?? null,
+        website: input.website ?? null,
+        location: input.location ?? null,
+        industry: input.industry ?? null
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Company profile creation failed:', error);
+    throw error;
+  }
+};

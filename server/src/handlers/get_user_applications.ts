@@ -1,27 +1,20 @@
+import { db } from '../db';
+import { jobApplicationsTable } from '../db/schema';
 import { type JobApplication } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export async function getUserApplications(jobSeekerId: number): Promise<JobApplication[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching all job applications submitted by a specific
-    // job seeker. Used by job seekers to track their application status.
-    return Promise.resolve([
-        {
-            id: 1,
-            job_posting_id: 1,
-            job_seeker_id: jobSeekerId,
-            status: 'pending',
-            cover_letter: 'I am excited to apply for this position...',
-            applied_at: new Date(),
-            updated_at: new Date()
-        },
-        {
-            id: 2,
-            job_posting_id: 2,
-            job_seeker_id: jobSeekerId,
-            status: 'accepted',
-            cover_letter: 'This volunteer opportunity aligns perfectly...',
-            applied_at: new Date(),
-            updated_at: new Date()
-        }
-    ] as JobApplication[]);
+  try {
+    // Fetch all job applications for the given job seeker, ordered by most recent first
+    const results = await db.select()
+      .from(jobApplicationsTable)
+      .where(eq(jobApplicationsTable.job_seeker_id, jobSeekerId))
+      .orderBy(desc(jobApplicationsTable.applied_at))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch user applications:', error);
+    throw error;
+  }
 }

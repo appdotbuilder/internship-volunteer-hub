@@ -1,19 +1,42 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type LoginInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function loginUser(input: LoginInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is authenticating a user by checking their email/password
-    // against the database and returning the user information if credentials are valid.
-    // Should throw an error if credentials are invalid.
-    return Promise.resolve({
-        id: 1,
-        email: input.email,
-        password_hash: 'hashed_password',
-        role: 'job_seeker',
-        first_name: 'John',
-        last_name: 'Doe',
-        phone: null,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as User);
-}
+export const loginUser = async (input: LoginInput): Promise<User> => {
+  try {
+    // Find user by email
+    const users = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.email, input.email))
+      .execute();
+
+    if (users.length === 0) {
+      throw new Error('Invalid email or password');
+    }
+
+    const user = users[0];
+
+    // For this implementation, we'll assume passwords are stored as plain text
+    // In a real application, this should use proper password hashing (bcrypt, argon2, etc.)
+    if (input.password !== user.password_hash) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Return user data
+    return {
+      id: user.id,
+      email: user.email,
+      password_hash: user.password_hash,
+      role: user.role,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      phone: user.phone,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
+  } catch (error) {
+    console.error('User login failed:', error);
+    throw error;
+  }
+};

@@ -1,18 +1,45 @@
+import { db } from '../db';
+import { companyProfilesTable } from '../db/schema';
 import { type UpdateCompanyProfileInput, type CompanyProfile } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateCompanyProfile(input: UpdateCompanyProfileInput): Promise<CompanyProfile> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating an existing company profile
-    // with new information and persisting changes to the database.
-    return Promise.resolve({
-        id: input.id,
-        user_id: 1, // Placeholder user ID
-        company_name: input.company_name || 'Example Company',
-        description: input.description || null,
-        website: input.website || null,
-        location: input.location || null,
-        industry: input.industry || null,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as CompanyProfile);
-}
+export const updateCompanyProfile = async (input: UpdateCompanyProfileInput): Promise<CompanyProfile> => {
+  try {
+    // Build update object with only provided fields
+    const updateData: Partial<typeof companyProfilesTable.$inferInsert> = {
+      updated_at: new Date()
+    };
+
+    if (input.company_name !== undefined) {
+      updateData.company_name = input.company_name;
+    }
+    if (input.description !== undefined) {
+      updateData.description = input.description;
+    }
+    if (input.website !== undefined) {
+      updateData.website = input.website;
+    }
+    if (input.location !== undefined) {
+      updateData.location = input.location;
+    }
+    if (input.industry !== undefined) {
+      updateData.industry = input.industry;
+    }
+
+    // Update the company profile
+    const result = await db.update(companyProfilesTable)
+      .set(updateData)
+      .where(eq(companyProfilesTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Company profile with id ${input.id} not found`);
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Company profile update failed:', error);
+    throw error;
+  }
+};

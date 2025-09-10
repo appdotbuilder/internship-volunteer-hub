@@ -12,7 +12,8 @@ export const createCompanyProfile = async (input: CreateCompanyProfileInput): Pr
         description: input.description ?? null,
         website: input.website ?? null,
         location: input.location ?? null,
-        industry: input.industry ?? null
+        industry: input.industry ?? null,
+        credentials_file_url: input.credentials_file_url ?? null
       })
       .returning()
       .execute();

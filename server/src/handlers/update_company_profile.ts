@@ -25,6 +25,9 @@ export const updateCompanyProfile = async (input: UpdateCompanyProfileInput): Pr
     if (input.industry !== undefined) {
       updateData.industry = input.industry;
     }
+    if (input.credentials_file_url !== undefined) {
+      updateData.credentials_file_url = input.credentials_file_url;
+    }
 
     // Update the company profile
     const result = await db.update(companyProfilesTable)

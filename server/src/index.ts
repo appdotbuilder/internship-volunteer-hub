@@ -18,7 +18,9 @@ import {
   updateJobApplicationStatusInputSchema,
   searchJobsInputSchema,
   idParamSchema,
-  userIdParamSchema
+  userIdParamSchema,
+  updateCompanyVerificationInputSchema,
+  uploadCompanyCredentialsInputSchema
 } from './schema';
 
 // Import handlers
@@ -46,6 +48,8 @@ import { deleteUser } from './handlers/delete_user';
 import { getAllJobPostings } from './handlers/get_all_job_postings';
 import { getAllApplications } from './handlers/get_all_applications';
 import { getJobApplicationsWithDetails } from './handlers/get_job_applications_with_details';
+import { updateCompanyVerification } from './handlers/update_company_verification';
+import { uploadCompanyCredentials } from './handlers/upload_company_credentials';
 
 const t = initTRPC.create({
   transformer: superjson,
@@ -98,6 +102,15 @@ const appRouter = router({
   getCompanyProfile: publicProcedure
     .input(userIdParamSchema)
     .query(({ input }) => getCompanyProfile(input.userId)),
+
+  // Company verification management
+  updateCompanyVerification: publicProcedure
+    .input(updateCompanyVerificationInputSchema)
+    .mutation(({ input }) => updateCompanyVerification(input)),
+
+  uploadCompanyCredentials: publicProcedure
+    .input(uploadCompanyCredentialsInputSchema)
+    .mutation(({ input }) => uploadCompanyCredentials(input)),
 
   // Job Posting management
   createJobPosting: publicProcedure

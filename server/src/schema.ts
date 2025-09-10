@@ -12,6 +12,10 @@ export type JobType = z.infer<typeof jobTypeSchema>;
 export const applicationStatusSchema = z.enum(['pending', 'accepted', 'rejected', 'withdrawn']);
 export type ApplicationStatus = z.infer<typeof applicationStatusSchema>;
 
+// Verification status enum
+export const verificationStatusSchema = z.enum(['pending', 'verified', 'rejected']);
+export type VerificationStatus = z.infer<typeof verificationStatusSchema>;
+
 // User schema
 export const userSchema = z.object({
   id: z.number(),
@@ -51,6 +55,8 @@ export const companyProfileSchema = z.object({
   website: z.string().nullable(),
   location: z.string().nullable(),
   industry: z.string().nullable(),
+  credentials_file_url: z.string().nullable(),
+  verification_status: verificationStatusSchema,
   created_at: z.coerce.date(),
   updated_at: z.coerce.date()
 });
@@ -141,7 +147,8 @@ export const createCompanyProfileInputSchema = z.object({
   description: z.string().nullable().optional(),
   website: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
-  industry: z.string().nullable().optional()
+  industry: z.string().nullable().optional(),
+  credentials_file_url: z.string().nullable().optional()
 });
 
 export type CreateCompanyProfileInput = z.infer<typeof createCompanyProfileInputSchema>;
@@ -152,7 +159,8 @@ export const updateCompanyProfileInputSchema = z.object({
   description: z.string().nullable().optional(),
   website: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
-  industry: z.string().nullable().optional()
+  industry: z.string().nullable().optional(),
+  credentials_file_url: z.string().nullable().optional()
 });
 
 export type UpdateCompanyProfileInput = z.infer<typeof updateCompanyProfileInputSchema>;
@@ -227,3 +235,21 @@ export const userIdParamSchema = z.object({
 });
 
 export type UserIdParam = z.infer<typeof userIdParamSchema>;
+
+// Company verification input
+export const updateCompanyVerificationInputSchema = z.object({
+  id: z.number(),
+  status: verificationStatusSchema.refine(status => status === 'verified' || status === 'rejected', {
+    message: "Status must be either 'verified' or 'rejected'"
+  })
+});
+
+export type UpdateCompanyVerificationInput = z.infer<typeof updateCompanyVerificationInputSchema>;
+
+// Company credentials upload input
+export const uploadCompanyCredentialsInputSchema = z.object({
+  id: z.number(),
+  credentials_file_url: z.string()
+});
+
+export type UploadCompanyCredentialsInput = z.infer<typeof uploadCompanyCredentialsInputSchema>;

@@ -5,6 +5,7 @@ import { relations } from 'drizzle-orm';
 export const userRoleEnum = pgEnum('user_role', ['job_seeker', 'company', 'administrator']);
 export const jobTypeEnum = pgEnum('job_type', ['internship', 'volunteer']);
 export const applicationStatusEnum = pgEnum('application_status', ['pending', 'accepted', 'rejected', 'withdrawn']);
+export const verificationStatusEnum = pgEnum('verification_status', ['pending', 'verified', 'rejected']);
 
 // Users table
 export const usersTable = pgTable('users', {
@@ -41,6 +42,8 @@ export const companyProfilesTable = pgTable('company_profiles', {
   website: text('website'),
   location: text('location'),
   industry: text('industry'),
+  credentials_file_url: text('credentials_file_url'),
+  verification_status: verificationStatusEnum('verification_status').default('pending').notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull()
 });

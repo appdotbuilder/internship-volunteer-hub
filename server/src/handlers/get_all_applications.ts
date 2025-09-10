@@ -6,6 +6,7 @@ export interface ApplicationWithDetails {
   id: number;
   job_title: string;
   company_name: string;
+  company_verification_status: 'pending' | 'verified' | 'rejected';
   job_seeker_name: string;
   job_seeker_email: string;
   status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
@@ -25,6 +26,7 @@ export const getAllApplications = async (): Promise<ApplicationWithDetails[]> =>
         application_updated_at: jobApplicationsTable.updated_at,
         job_title: jobPostingsTable.title,
         company_name: companyProfilesTable.company_name,
+        company_verification_status: companyProfilesTable.verification_status,
         job_seeker_first_name: usersTable.first_name,
         job_seeker_last_name: usersTable.last_name,
         job_seeker_email: usersTable.email,
@@ -40,6 +42,7 @@ export const getAllApplications = async (): Promise<ApplicationWithDetails[]> =>
       id: result.application_id,
       job_title: result.job_title,
       company_name: result.company_name,
+      company_verification_status: result.company_verification_status,
       job_seeker_name: `${result.job_seeker_first_name} ${result.job_seeker_last_name}`,
       job_seeker_email: result.job_seeker_email,
       status: result.application_status,

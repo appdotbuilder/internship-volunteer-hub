@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { trpc } from '@/utils/trpc';
 import { useState, useEffect, useCallback } from 'react';
 import type { User, JobPosting, JobApplication, CompanyProfile, CreateJobPostingInput, UpdateJobPostingInput } from '../../../server/src/schema';
+import { exportToExcel, formatDateForExcel } from './ExcelExportUtils';
+import type { JobApplicationWithDetails } from '../../../server/src/handlers/get_job_applications_with_details';
 
 interface CompanyDashboardProps {
   user: User;
@@ -20,9 +22,11 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
+  const [jobApplicationsWithDetails, setJobApplicationsWithDetails] = useState<JobApplicationWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Job posting form state
   const [jobForm, setJobForm] = useState<CreateJobPostingInput>({
@@ -67,7 +71,9 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
   const loadJobApplications = useCallback(async (jobId: number) => {
     try {
       const applications = await trpc.getJobApplicationsForJob.query({ id: jobId });
+      const applicationsWithDetails = await trpc.getJobApplicationsWithDetails.query({ id: jobId });
       setJobApplications(applications);
+      setJobApplicationsWithDetails(applicationsWithDetails);
     } catch (error) {
       console.error('Failed to load applications:', error);
     }
@@ -186,6 +192,38 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
       application_deadline: job.application_deadline
     });
     setShowJobForm(true);
+  };
+
+  const handleExportApplicants = async () => {
+    if (!selectedJob) return;
+    
+    setIsExporting(true);
+    try {
+      const exportData = jobApplicationsWithDetails.map((application: JobApplicationWithDetails) => ({
+        'Application ID': application.id,
+        'Job Seeker Name': application.job_seeker_name,
+        'Job Seeker Email': application.job_seeker_email,
+        'Application Status': application.status.charAt(0).toUpperCase() + application.status.slice(1),
+        'Cover Letter': application.cover_letter || '',
+        'Applied Date': formatDateForExcel(application.applied_at),
+        'Updated Date': formatDateForExcel(application.updated_at)
+      }));
+      
+      const success = exportToExcel(
+        exportData, 
+        `${selectedJob.title}_applicants_${new Date().toISOString().split('T')[0]}`, 
+        'Applicants'
+      );
+      
+      if (!success) {
+        alert('Failed to export applicants. Please try again.');
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export applicants. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -488,11 +526,20 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
           <div className="space-y-4">
             {selectedJob ? (
               <>
-                <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-semibold text-gray-700">
-                    📄 Applications for: {selectedJob.title}
-                  </h3>
-                  <Badge>{jobApplications.length} applications</Badge>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      📄 Applications for: {selectedJob.title}
+                    </h3>
+                    <Badge>{jobApplications.length} applications</Badge>
+                  </div>
+                  <Button
+                    onClick={handleExportApplicants}
+                    disabled={isExporting || jobApplicationsWithDetails.length === 0}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    📊 Export Applicants to XLS
+                  </Button>
                 </div>
                 {jobApplications.length === 0 ? (
                   <Card>

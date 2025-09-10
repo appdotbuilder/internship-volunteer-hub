@@ -44,6 +44,8 @@ import { getUserApplications } from './handlers/get_user_applications';
 import { getAllUsers } from './handlers/get_all_users';
 import { deleteUser } from './handlers/delete_user';
 import { getAllJobPostings } from './handlers/get_all_job_postings';
+import { getAllApplications } from './handlers/get_all_applications';
+import { getJobApplicationsWithDetails } from './handlers/get_job_applications_with_details';
 
 const t = initTRPC.create({
   transformer: superjson,
@@ -150,6 +152,14 @@ const appRouter = router({
 
   getAllJobPostings: publicProcedure
     .query(() => getAllJobPostings()),
+
+  // Application management for admin
+  getAllApplications: publicProcedure
+    .query(() => getAllApplications()),
+
+  getJobApplicationsWithDetails: publicProcedure
+    .input(idParamSchema)
+    .query(({ input }) => getJobApplicationsWithDetails(input.id)),
 });
 
 export type AppRouter = typeof appRouter;

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { trpc } from '@/utils/trpc';
 import { useState, useEffect, useCallback } from 'react';
-import type { User, JobPosting, JobApplication, CompanyProfile, CreateJobPostingInput, UpdateJobPostingInput } from '../../../server/src/schema';
+import type { User, JobPosting, JobApplication, CompanyProfile, CreateJobPostingInput, UpdateJobPostingInput, UpdateCompanyProfileInput } from '../../../server/src/schema';
 import { exportToExcel, formatDateForExcel } from './ExcelExportUtils';
 import type { JobApplicationWithDetails } from '../../../server/src/handlers/get_job_applications_with_details';
 
@@ -27,6 +27,8 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
   const [showJobForm, setShowJobForm] = useState(false);
   const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Job posting form state
   const [jobForm, setJobForm] = useState<CreateJobPostingInput>({
@@ -41,15 +43,36 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
     application_deadline: null
   });
 
+  // Company profile form state
+  const [companyProfileForm, setCompanyProfileForm] = useState<UpdateCompanyProfileInput>({
+    id: 0,
+    company_name: undefined,
+    description: null,
+    website: null,
+    location: null,
+    industry: null
+  });
+
   const loadCompanyProfile = useCallback(async () => {
+    setIsLoadingProfile(true);
     try {
       const profile = await trpc.getCompanyProfile.query({ userId: user.id });
       setCompanyProfile(profile);
       if (profile) {
         setJobForm((prev: CreateJobPostingInput) => ({ ...prev, company_id: profile.id }));
+        setCompanyProfileForm({
+          id: profile.id,
+          company_name: profile.company_name,
+          description: profile.description,
+          website: profile.website,
+          location: profile.location,
+          industry: profile.industry
+        });
       }
     } catch (error) {
       console.error('Failed to load company profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
     }
   }, [user.id]);
 
@@ -226,6 +249,21 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
     }
   };
 
+  const handleUpdateCompanyProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyProfile) return;
+
+    setIsUpdatingProfile(true);
+    try {
+      const updatedProfile = await trpc.updateCompanyProfile.mutate(companyProfileForm);
+      setCompanyProfile(updatedProfile);
+    } catch (error) {
+      console.error('Failed to update company profile:', error);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -370,9 +408,10 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
       </div>
 
       <Tabs defaultValue="jobs" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="jobs">My Job Postings</TabsTrigger>
           <TabsTrigger value="applications">Applications</TabsTrigger>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs">
@@ -606,6 +645,110 @@ export function CompanyDashboard({ user }: CompanyDashboardProps) {
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="profile">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🏢 Company Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingProfile ? (
+                <div className="text-center text-gray-500">Loading profile...</div>
+              ) : (
+                <form onSubmit={handleUpdateCompanyProfile} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Company Name *</label>
+                      <Input
+                        value={companyProfileForm.company_name || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setCompanyProfileForm((prev: UpdateCompanyProfileInput) => ({ 
+                            ...prev, 
+                            company_name: e.target.value 
+                          }))
+                        }
+                        placeholder="Your company name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Industry</label>
+                      <Input
+                        value={companyProfileForm.industry || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setCompanyProfileForm((prev: UpdateCompanyProfileInput) => ({ 
+                            ...prev, 
+                            industry: e.target.value || null 
+                          }))
+                        }
+                        placeholder="e.g., Technology, Healthcare, Education"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Company Description</label>
+                    <Textarea
+                      value={companyProfileForm.description || ''}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setCompanyProfileForm((prev: UpdateCompanyProfileInput) => ({ 
+                          ...prev, 
+                          description: e.target.value || null 
+                        }))
+                      }
+                      placeholder="Tell us about your company, mission, and values..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Website</label>
+                      <Input
+                        type="url"
+                        value={companyProfileForm.website || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setCompanyProfileForm((prev: UpdateCompanyProfileInput) => ({ 
+                            ...prev, 
+                            website: e.target.value || null 
+                          }))
+                        }
+                        placeholder="https://yourcompany.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Location</label>
+                      <Input
+                        value={companyProfileForm.location || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setCompanyProfileForm((prev: UpdateCompanyProfileInput) => ({ 
+                            ...prev, 
+                            location: e.target.value || null 
+                          }))
+                        }
+                        placeholder="City, State/Country"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button type="submit" disabled={isUpdatingProfile} className="bg-green-600 hover:bg-green-700">
+                      {isUpdatingProfile ? 'Updating...' : '💾 Update Profile'}
+                    </Button>
+                  </div>
+
+                  {companyProfile && (
+                    <div className="pt-4 border-t text-sm text-gray-500">
+                      Profile last updated: {companyProfile.updated_at.toLocaleDateString()}
+                    </div>
+                  )}
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

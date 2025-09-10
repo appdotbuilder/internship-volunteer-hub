@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { trpc } from '@/utils/trpc';
 import { useState, useEffect, useCallback } from 'react';
-import type { User, JobPosting, JobApplication, SearchJobsInput } from '../../../server/src/schema';
+import type { User, JobPosting, JobApplication, SearchJobsInput, JobSeekerProfile, UpdateJobSeekerProfileInput } from '../../../server/src/schema';
 
 interface JobSeekerDashboardProps {
   user: User;
@@ -17,9 +17,12 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [userApplications, setUserApplications] = useState<JobApplication[]>([]);
+  const [jobSeekerProfile, setJobSeekerProfile] = useState<JobSeekerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Search filters
   const [searchFilters, setSearchFilters] = useState<SearchJobsInput>({
@@ -33,6 +36,16 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
   // Application form
   const [applicationData, setApplicationData] = useState({
     cover_letter: ''
+  });
+
+  // Profile form
+  const [profileForm, setProfileForm] = useState<UpdateJobSeekerProfileInput>({
+    id: 0,
+    bio: null,
+    skills: null,
+    education: null,
+    experience: null,
+    resume_url: null
   });
 
   const loadJobs = useCallback(async () => {
@@ -59,6 +72,28 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
     }
   }, [user.id]);
 
+  const loadJobSeekerProfile = useCallback(async () => {
+    setIsLoadingProfile(true);
+    try {
+      const profile = await trpc.getJobSeekerProfile.query({ userId: user.id });
+      setJobSeekerProfile(profile);
+      if (profile) {
+        setProfileForm({
+          id: profile.id,
+          bio: profile.bio,
+          skills: profile.skills,
+          education: profile.education,
+          experience: profile.experience,
+          resume_url: profile.resume_url
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load job seeker profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  }, [user.id]);
+
   useEffect(() => {
     loadJobs();
   }, [loadJobs]);
@@ -66,6 +101,10 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
   useEffect(() => {
     loadUserApplications();
   }, [loadUserApplications]);
+
+  useEffect(() => {
+    loadJobSeekerProfile();
+  }, [loadJobSeekerProfile]);
 
   const handleSearch = () => {
     loadJobs();
@@ -103,6 +142,21 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
     return application?.status;
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jobSeekerProfile) return;
+
+    setIsUpdatingProfile(true);
+    try {
+      const updatedProfile = await trpc.updateJobSeekerProfile.mutate(profileForm);
+      setJobSeekerProfile(updatedProfile);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -112,9 +166,10 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
       </div>
 
       <Tabs defaultValue="browse" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="browse">Browse Jobs</TabsTrigger>
           <TabsTrigger value="applications">My Applications</TabsTrigger>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse">
@@ -384,6 +439,111 @@ export function JobSeekerDashboard({ user }: JobSeekerDashboardProps) {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="profile">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                👤 My Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingProfile ? (
+                <div className="text-center text-gray-500">Loading profile...</div>
+              ) : (
+                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Bio</label>
+                      <Textarea
+                        value={profileForm.bio || ''}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                          setProfileForm((prev: UpdateJobSeekerProfileInput) => ({ 
+                            ...prev, 
+                            bio: e.target.value || null 
+                          }))
+                        }
+                        placeholder="Tell us about yourself..."
+                        rows={4}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Skills</label>
+                      <Textarea
+                        value={profileForm.skills || ''}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                          setProfileForm((prev: UpdateJobSeekerProfileInput) => ({ 
+                            ...prev, 
+                            skills: e.target.value || null 
+                          }))
+                        }
+                        placeholder="List your skills (e.g., JavaScript, Python, Communication)"
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Education</label>
+                    <Textarea
+                      value={profileForm.education || ''}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setProfileForm((prev: UpdateJobSeekerProfileInput) => ({ 
+                          ...prev, 
+                          education: e.target.value || null 
+                        }))
+                      }
+                      placeholder="Your educational background..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Experience</label>
+                    <Textarea
+                      value={profileForm.experience || ''}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setProfileForm((prev: UpdateJobSeekerProfileInput) => ({ 
+                          ...prev, 
+                          experience: e.target.value || null 
+                        }))
+                      }
+                      placeholder="Your work experience, internships, projects..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Resume URL</label>
+                    <Input
+                      type="url"
+                      value={profileForm.resume_url || ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setProfileForm((prev: UpdateJobSeekerProfileInput) => ({ 
+                          ...prev, 
+                          resume_url: e.target.value || null 
+                        }))
+                      }
+                      placeholder="Link to your resume (Google Drive, Dropbox, etc.)"
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button type="submit" disabled={isUpdatingProfile} className="bg-green-600 hover:bg-green-700">
+                      {isUpdatingProfile ? 'Updating...' : '💾 Update Profile'}
+                    </Button>
+                  </div>
+
+                  {jobSeekerProfile && (
+                    <div className="pt-4 border-t text-sm text-gray-500">
+                      Profile last updated: {jobSeekerProfile.updated_at.toLocaleDateString()}
+                    </div>
+                  )}
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
